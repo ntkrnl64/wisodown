@@ -1,6 +1,10 @@
 # Quick Start
 
-## Install
+## Use online
+
+No installation needed — visit **[wiso.krnl64.win](https://wiso.krnl64.win)** to download ISOs directly from your browser. Select an edition, pick a language, and get a direct download link from Microsoft.
+
+## Install locally
 
 You need [Rust](https://rustup.rs) installed.
 

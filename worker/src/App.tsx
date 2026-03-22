@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Body1,
   Button,
@@ -30,15 +30,18 @@ import {
   DismissRegular,
   ShieldCheckmarkRegular,
 } from "@fluentui/react-icons";
+import { type Translations, useLocale } from "./i18n";
 
-const EDITIONS = [
-  { key: "x64", label: "Windows 11 (x64)" },
-  { key: "arm64", label: "Windows 11 (ARM64)" },
-  { key: "win10", label: "Windows 10" },
-  { key: "win11-cn-home", label: "Windows 11 Home China" },
-  { key: "win11-cn-pro", label: "Windows 11 Pro China" },
-  { key: "custom", label: "Custom Edition ID..." },
-];
+function getEditions(t: Translations) {
+  return [
+    { key: "x64", label: t.editionX64 },
+    { key: "arm64", label: t.editionArm64 },
+    { key: "win10", label: t.editionWin10 },
+    { key: "win11-cn-home", label: t.editionCnHome },
+    { key: "win11-cn-pro", label: t.editionCnPro },
+    { key: "custom", label: t.editionCustom },
+  ];
+}
 
 interface Sku {
   Id: string;
@@ -80,6 +83,18 @@ const useStyles = makeStyles({
   header: {
     textAlign: "center",
     marginBottom: "8px",
+  },
+  localeSwitcher: {
+    display: "inline-flex",
+    gap: "4px",
+    marginTop: "6px",
+    fontSize: tokens.fontSizeBase200,
+  },
+  localeButton: {
+    minWidth: "auto",
+    padding: "0 6px",
+    height: "24px",
+    fontSize: tokens.fontSizeBase200,
   },
   card: {
     padding: "20px",
@@ -138,6 +153,8 @@ const useStyles = makeStyles({
 
 function App() {
   const styles = useStyles();
+  const { locale, setLocale, t } = useLocale();
+  const editions = useMemo(() => getEditions(t), [t]);
 
   const [edition, setEdition] = useState<string>("");
   const [customEditionId, setCustomEditionId] = useState("");
@@ -214,7 +231,7 @@ function App() {
     }
   }
 
-  const editionLabel = EDITIONS.find((e) => e.key === edition)?.label ?? "";
+  const editionLabel = editions.find((e) => e.key === edition)?.label ?? "";
   const languageLabel =
     languages.find((s) => s.Language === language)?.LocalizedLanguage ?? "";
   const hashes = links?.hashes ?? {};
@@ -224,9 +241,27 @@ function App() {
     <div className={styles.root}>
       <div className={styles.container}>
         <div className={styles.header}>
-          <Title2>Windows ISO Downloader</Title2>
+          <Title2>{t.title}</Title2>
           <br />
-          <Text>Download Windows ISOs directly from Microsoft</Text>
+          <Text>{t.subtitle}</Text>
+          <div className={styles.localeSwitcher}>
+            <Button
+              className={styles.localeButton}
+              appearance={locale === "en" ? "primary" : "subtle"}
+              size="small"
+              onClick={() => setLocale("en")}
+            >
+              EN
+            </Button>
+            <Button
+              className={styles.localeButton}
+              appearance={locale === "zh" ? "primary" : "subtle"}
+              size="small"
+              onClick={() => setLocale("zh")}
+            >
+              中文
+            </Button>
+          </div>
         </div>
 
         {error && (
@@ -237,16 +272,16 @@ function App() {
 
         <Card className={styles.card}>
           <div className={styles.form}>
-            <Field label="Windows Edition">
+            <Field label={t.editionLabel}>
               <Dropdown
-                placeholder="Select an edition..."
+                placeholder={t.editionPlaceholder}
                 value={editionLabel}
                 selectedOptions={edition ? [edition] : []}
                 onOptionSelect={(_, data) => {
                   if (data.optionValue) onEditionSelect(data.optionValue);
                 }}
               >
-                {EDITIONS.map((e) => (
+                {editions.map((e) => (
                   <Option key={e.key} value={e.key} text={e.label}>
                     {e.label}
                   </Option>
@@ -255,9 +290,9 @@ function App() {
             </Field>
 
             {isCustom && (
-              <Field label="Product Edition ID">
+              <Field label={t.productEditionId}>
                 <Input
-                  placeholder="e.g. 3321"
+                  placeholder={t.productEditionPlaceholder}
                   value={customEditionId}
                   onChange={(_, data) => setCustomEditionId(data.value)}
                   onKeyDown={(e) => {
@@ -270,7 +305,7 @@ function App() {
                       onClick={onCustomEditionSubmit}
                       disabled={!customEditionId.trim() || loadingSkus}
                     >
-                      {loadingSkus ? <Spinner size="tiny" /> : "Load"}
+                      {loadingSkus ? <Spinner size="tiny" /> : t.load}
                     </Button>
                   }
                 />
@@ -278,12 +313,12 @@ function App() {
             )}
 
             {(canSelectLanguage || loadingSkus) && (
-              <Field label="Language">
+              <Field label={t.languageLabel}>
                 {loadingSkus ? (
-                  <Spinner size="small" label="Fetching languages..." />
+                  <Spinner size="small" label={t.fetchingLanguages} />
                 ) : (
                   <Dropdown
-                    placeholder="Select a language..."
+                    placeholder={t.languagePlaceholder}
                     value={languageLabel}
                     selectedOptions={language ? [language] : []}
                     onOptionSelect={(_, data) => {
@@ -318,9 +353,7 @@ function App() {
                 disabled={!canGenerate}
                 onClick={onGenerate}
               >
-                {loadingLinks
-                  ? "Generating download links..."
-                  : "Generate Download Links"}
+                {loadingLinks ? t.generatingLinks : t.generateLinks}
               </Button>
             )}
           </div>
@@ -350,11 +383,13 @@ function App() {
             </div>
             <div className={styles.meta}>
               {links.expiresAt && (
-                <Text size={200}>Link expires: {links.expiresAt}</Text>
+                <Text size={200}>
+                  {t.linkExpires.replace("{time}", links.expiresAt)}
+                </Text>
               )}
               {hasHashes && (
                 <Link onClick={() => setHashDialogOpen(true)} inline>
-                  <ShieldCheckmarkRegular fontSize={14} /> View SHA-256 hashes
+                  <ShieldCheckmarkRegular fontSize={14} /> {t.viewHashes}
                 </Link>
               )}
             </div>
@@ -379,14 +414,14 @@ function App() {
                   </DialogTrigger>
                 }
               >
-                SHA-256 Hashes
+                {t.hashDialogTitle}
               </DialogTitle>
               <DialogContent>
                 <table className={styles.hashTable}>
                   <thead>
                     <tr>
-                      <th>File</th>
-                      <th>SHA-256</th>
+                      <th>{t.fileHeader}</th>
+                      <th>{t.sha256Header}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -406,7 +441,7 @@ function App() {
         {/* Footer */}
         <div className={styles.footer}>
           <Body1>
-            Licensed under{" "}
+            {t.licensedUnder}{" "}
             <Link
               href="https://www.gnu.org/licenses/gpl-3.0.html"
               target="_blank"
@@ -417,7 +452,7 @@ function App() {
           </Body1>
           <Text size={200}>
             <Link href="https://wisodocs.krnl64.win" target="_blank" inline>
-              Docs
+              {t.docs}
             </Link>
             {" — "}
             <Link
@@ -425,10 +460,10 @@ function App() {
               target="_blank"
               inline
             >
-              Source code on GitHub
+              {t.sourceCode}
             </Link>
             {" — "}
-            ISOs are downloaded directly from Microsoft servers.
+            {t.footerNote}
           </Text>
         </div>
       </div>

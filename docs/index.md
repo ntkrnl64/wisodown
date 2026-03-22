@@ -7,6 +7,9 @@ hero:
   tagline: Download Windows 10 and Windows 11 ISOs straight from Microsoft's CDN, with automatic SHA-256 verification.
   actions:
     - theme: brand
+      text: Download Online
+      link: https://wiso.krnl64.win
+    - theme: alt
       text: Quick Start
       link: /guide/quick-start
     - theme: alt
