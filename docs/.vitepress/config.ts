@@ -22,11 +22,11 @@ export default defineConfig({
     ],
 
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/ntkrnl64/win11_iso' },
+      { icon: 'github', link: 'https://github.com/ntkrnl64/wisodown' },
     ],
 
     footer: {
-      message: 'Released under the MIT License.',
+      message: 'Released under the GNU General Public License v3.0.',
     },
   },
 })

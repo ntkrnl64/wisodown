@@ -23,3 +23,10 @@ features:
   - title: Interactive or Scripted
     details: Run without arguments for a guided wizard, or pass flags to fully automate downloads in scripts and CI.
 ---
+
+::: warning IP Ban
+Please note that your IP can gets banned by Microsoft temporarily if you send too many requests.
+You will receive `[ErrorSettings.SentinelReject] Sentinel marked this request as rejected. (type 9)`.
+Please use a VPN to send even more requests (LOL) or give up and try again later.
+If that doesn't help, please report in issues and provide logs using `--debug` flag.
+:::
