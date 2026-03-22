@@ -1,0 +1,129 @@
+Third-Party Licenses
+====================
+
+This project uses the following third-party libraries and assets.
+
+
+Icon
+----
+ic_fluent_arrow_square_32_color.svg
+
+  Source: https://github.com/microsoft/fluentui-system-icons
+  License: MIT
+  Copyright (c) 2020 Microsoft Corporation
+
+
+Rust Dependencies
+-----------------
+
+reqwest 0.12.28
+  License: MIT OR Apache-2.0
+  Copyright (c) 2016 Sean McArthur
+
+serde 1.0.228
+  License: MIT OR Apache-2.0
+  Copyright (c) David Tolnay
+
+serde_json 1.0.149
+  License: MIT OR Apache-2.0
+  Copyright (c) David Tolnay
+
+uuid 1.22.0
+  License: Apache-2.0 OR MIT
+  Copyright (c) uuid-rs contributors
+
+anyhow 1.0.102
+  License: MIT OR Apache-2.0
+  Copyright (c) David Tolnay
+
+sha2 0.10.9
+  License: MIT OR Apache-2.0
+  Copyright (c) RustCrypto contributors
+
+hex 0.4.3
+  License: MIT OR Apache-2.0
+  Copyright (c) KokaKiwi
+
+tokio 1.50.0
+  License: MIT
+  Copyright (c) Tokio contributors
+
+clap 4.6.0
+  License: MIT OR Apache-2.0
+  Copyright (c) Kevin B. Knapp and clap contributors
+
+dialoguer 0.11.0
+  License: MIT
+  Copyright (c) Armin Ronacher
+
+console 0.15.11
+  License: MIT
+  Copyright (c) Armin Ronacher
+
+indicatif 0.17.11
+  License: MIT
+  Copyright (c) console-rs contributors
+
+futures-util 0.3.32
+  License: MIT OR Apache-2.0
+  Copyright (c) Alex Crichton
+
+bytes 1.11.1
+  License: MIT
+  Copyright (c) Carl Lerche
+
+js-sys 0.3.91
+  License: MIT OR Apache-2.0
+  Copyright (c) The wasm-bindgen contributors
+
+wasm-bindgen 0.2.114
+  License: MIT OR Apache-2.0
+  Copyright (c) The wasm-bindgen contributors
+
+wasm-bindgen-futures 0.4.64
+  License: MIT OR Apache-2.0
+  Copyright (c) The wasm-bindgen contributors
+
+serde-wasm-bindgen 0.6.5
+  License: MIT
+  Copyright (c) Ingvar Stepanyan
+
+
+JavaScript Dependencies
+-----------------------
+
+@fluentui/react-components 9.73.4
+  License: MIT
+  Copyright (c) Microsoft Corporation
+
+@fluentui/react-icons 2.0.321
+  License: MIT
+  Copyright (c) Microsoft Corporation
+
+react 19.2.4
+  License: MIT
+  Copyright (c) Meta Platforms, Inc. and affiliates
+
+react-dom 19.2.4
+  License: MIT
+  Copyright (c) Meta Platforms, Inc. and affiliates
+
+vite 7.3.1
+  License: MIT
+  Copyright (c) Yuxi (Evan) You
+
+typescript 5.9.3
+  License: Apache-2.0
+  Copyright (c) Microsoft Corporation
+
+@cloudflare/vite-plugin 1.30.0
+  License: MIT
+  Copyright (c) Cloudflare, Inc.
+
+@vitejs/plugin-react 5.2.0
+  License: MIT
+  Copyright (c) Yuxi (Evan) You
+
+eslint 9.39.4
+  License: MIT
+  Copyright (c) OpenJS Foundation

@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 description = "Download Windows 10 and Windows 11 ISOs directly from Microsoft"
 license = "GPL-3.0-only"
+repository = "https://github.com/ntkrnl64/wisodown"
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ["-Os"]
 
 [lib]
 name = "windows_iso_downloader"

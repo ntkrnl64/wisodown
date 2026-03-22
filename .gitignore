@@ -5,3 +5,5 @@
 /docs/.vitepress/dist
 /docs/.vitepress/cache
 /docs/node_modules
+/worker/node_modules
+/worker/.wrangler
