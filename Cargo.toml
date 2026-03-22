@@ -1,6 +1,6 @@
 [package]
 name = "windows-iso-downloader"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 description = "Download Windows 10 and Windows 11 ISOs directly from Microsoft"
 license = "GPL-3.0-only"
@@ -17,6 +17,10 @@ crate-type = ["lib", "cdylib"]
 [[bin]]
 name = "wisodown"
 path = "src/main.rs"
+
+[[bin]]
+name = "wisodown-server"
+path = "src/server.rs"
 
 # ── Core dependencies (all targets including wasm) ──────────────────────────
 [dependencies]
@@ -38,6 +42,10 @@ console = "0.15"
 indicatif = "0.17"
 futures-util = "0.3"
 bytes = "1"
+axum = "0.8"
+tower-http = { version = "0.6", features = ["fs", "cors"] }
+rust-embed = { version = "8", features = ["mime-guess"] }
+mime_guess = "2"
 
 # ── Wasm-only dependencies ──────────────────────────────────────────────────
 [target.'cfg(target_arch = "wasm32")'.dependencies]
