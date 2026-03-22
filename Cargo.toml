@@ -3,6 +3,7 @@ name = "windows-iso-downloader"
 version = "0.1.0"
 edition = "2021"
 description = "Download Windows 10 and Windows 11 ISOs directly from Microsoft"
+license = "GPL-3.0-only"
 
 [[bin]]
 name = "wisodown"
