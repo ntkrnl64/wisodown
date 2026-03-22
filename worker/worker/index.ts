@@ -118,6 +118,10 @@ export default {
   async fetch(request: Request) {
     const url = new URL(request.url);
 
+    if (url.pathname === "/docs" || url.pathname === "/docs/") {
+      return Response.redirect("https://wisodocs.krnl64.win", 302);
+    }
+
     if (!url.pathname.startsWith("/api/")) {
       return new Response(null, { status: 404 });
     }

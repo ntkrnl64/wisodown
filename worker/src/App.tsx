@@ -416,6 +416,10 @@ function App() {
             </Link>
           </Body1>
           <Text size={200}>
+            <Link href="https://wisodocs.krnl64.win" target="_blank" inline>
+              Docs
+            </Link>
+            {" — "}
             <Link
               href="https://github.com/ntkrnl64/wisodown"
               target="_blank"
