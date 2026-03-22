@@ -5,6 +5,7 @@ edition = "2021"
 description = "Download Windows 10 and Windows 11 ISOs directly from Microsoft"
 license = "GPL-3.0-only"
 repository = "https://github.com/ntkrnl64/wisodown"
+exclude = ["frontend/", "scripts/", "docs/", "src/server.rs"]
 
 [package.metadata.wasm-pack.profile.release]
 wasm-opt = ["-Os"]
@@ -21,6 +22,10 @@ path = "src/main.rs"
 [[bin]]
 name = "wisodown-server"
 path = "src/server.rs"
+required-features = ["server"]
+
+[features]
+server = []
 
 # ── Core dependencies (all targets including wasm) ──────────────────────────
 [dependencies]
