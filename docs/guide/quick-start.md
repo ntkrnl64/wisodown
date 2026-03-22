@@ -21,7 +21,7 @@ wisodown
 ```
 
 You'll be prompted to pick:
-1. **Windows version** — Windows 11 x64, Windows 11 arm64, or Windows 10
+1. **Windows version** — Windows 11 x64, Windows 11 arm64, Windows 11 Home/Pro (China), or Windows 10
 2. **Language** — any language Microsoft distributes (defaults to English)
 3. **Architecture** (Windows 10 only) — 64-bit or 32-bit
 

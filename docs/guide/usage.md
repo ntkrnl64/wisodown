@@ -12,12 +12,12 @@ Run without options for the interactive wizard.
 
 | Flag | Description |
 | ---- | ----------- |
-| `-e, --edition <ALIAS>` | Named edition: `x64`, `arm64`, or `win10` |
+| `-e, --edition <ALIAS>` | Named edition: `x64`, `arm64`, `win10`, `win11-cn-home`, `win11-cn-pro` |
 | `--edition-id <N>` | Raw numeric `ProductEditionId` (advanced) |
 | `--page-url <URL>` | Override cookie-acquisition page (requires `--edition-id`) |
 | `-l, --language <LANG>` | Language name, e.g. `English`, `French`, `Japanese`. Case-insensitive. |
 | `-o, --output <DIR>` | Output directory (default: current directory) |
-| `--threads <N>` | Parallel connections for downloading (default: `4`) |
+| `-t, --threads <N>` | Parallel connections for downloading (default: `8`) |
 | `--url-only` | Print the download URL without downloading |
 | `--list-languages` | List available languages for the chosen edition and exit |
 | `--cookie <STR>` | Browser cookie string for manual anti-bot bypass |
@@ -32,8 +32,10 @@ Run without options for the interactive wizard.
 | `x64` | Windows 11, 64-bit (x86-64) |
 | `arm64` | Windows 11, ARM 64-bit |
 | `win10` | Windows 10, multi-edition (Home/Pro, 32-bit + 64-bit) |
+| `win11-cn-home` | Windows 11 Home (China only) |
+| `win11-cn-pro` | Windows 11 Pro Chinese version |
 
-Aliases `win11`, `win11-x64`, `win11-arm64`, `amd64`, `aarch64` are also accepted.
+Aliases `win11`, `win11-x64`, `win11-arm64`, `amd64`, `aarch64`, `cn-home`, `cn-pro` are also accepted.
 
 ## Hash verification
 
@@ -64,7 +66,7 @@ wisodown --edition x64 --language English --no-verify
 
 ## Parallel downloading
 
-By default `wisodown` uses **4 parallel connections** via HTTP Range requests, which typically 2–4× faster than a single connection on high-bandwidth links.
+By default `wisodown` uses **8 parallel connections** via HTTP Range requests, which typically 2–4× faster than a single connection on high-bandwidth links.
 
 ```sh
 # Use 8 threads

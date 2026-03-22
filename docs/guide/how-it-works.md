@@ -7,12 +7,13 @@ This page describes the full lifecycle of a `wisodown` run, from session setup t
 ```
 wisodown
   │
-  ├─ 1. Session init   — load page, acquire httpOnly cookies
-  ├─ 2. Fingerprint    — simulate browser DFP handshake (fptctx2 + MUID)
-  ├─ 3. SKU list       — getSkuInformationByProductEdition
-  ├─ 4. Download link  — GetProductDownloadLinksBySku
-  ├─ 5. Page hashes    — scrape SHA-256 table from Microsoft's page
-  └─ 6. Download       — parallel Range requests → .part file → rename
+  ├─ 1. Session init    — load page, acquire httpOnly cookies
+  ├─ 2. Dynamic config  — extract profile/instanceId/orgId from SDS JS bundle
+  ├─ 3. Fingerprint     — VLSC (ThreatMetrix) + ov-df (fptctx2 + MUID)
+  ├─ 4. SKU list        — getSkuInformationByProductEdition
+  ├─ 5. Download link   — GetProductDownloadLinksBySku
+  ├─ 6. Page hashes     — scrape SHA-256 table from Microsoft's page
+  └─ 7. Download        — parallel Range requests → .part file → rename
 ```
 
 ---
@@ -28,28 +29,45 @@ It then performs a `GET` on the edition's download page (e.g. `/software-downloa
 
 ---
 
-## 2. Browser fingerprint handshake
+## 2. Dynamic configuration
 
-Microsoft's download API is protected by **Sentinel**, a bot-detection layer. The browser page runs JavaScript that:
+The download page embeds a JavaScript bundle (`sds/components/content/sdsbase/…/site.ACSHASH*.min.js`) that contains:
 
-1. Loads `https://ov-df.microsoft.com/mdt.js` to obtain a per-session `ticks` token.
+- **`profile`** — API profile token (e.g. `606624d44113`)
+- **`instanceId`** — ov-df fingerprint instance UUID
+- **`orgId`** — ThreatMetrix organisation ID (e.g. `y6jn8c31`)
+
+`wisodown` fetches the page HTML, locates the `<script src="…sdsbase…">` tag, fetches the JS bundle, and extracts all three values dynamically. It also reads the `endpoint-svc` hidden `<input>` for the API base URL. This means new values published by Microsoft are picked up automatically without a tool update.
+
+---
+
+## 3. Browser fingerprint handshake
+
+Microsoft's download API is protected by **Sentinel**, a bot-detection layer. The browser page runs **two** independent fingerprinting systems:
+
+### VLSC / ThreatMetrix
+
+1. Loads `https://vlscppe.microsoft.com/fp/tags.js?org_id=<orgId>&session_id=<uuid>` — a profiling script that sets tracking cookies.
+2. Hits the iframe endpoint `https://vlscppe.microsoft.com/tags?org_id=<orgId>&session_id=<uuid>` which sets additional cookies.
+
+### ov-df (Device Fingerprint)
+
+1. Loads `https://ov-df.microsoft.com/mdt.js?instanceId=<id>&pageId=si&session_id=<uuid>` to obtain a per-session `ticks` token.
 2. Loads a fingerprint iframe URL constructed from that token, which responds with `Set-Cookie` headers for:
    - `fptctx2` — Sentinel's session proof token
    - `MUID` — Microsoft's user ID cookie scoped to `.microsoft.com`
 
-Without these cookies the API returns an error. `wisodown` replicates this handshake:
-
-1. Fetches `mdt.js` and extracts the `ticks` value from the `&w=HEX` parameter in the iframe URL embedded in the response.
-2. Calls the fingerprint endpoint with that token, collecting the resulting cookies.
+Without cookies from **both** systems the API returns a Sentinel rejection. `wisodown` replicates both flows sequentially.
 
 ---
 
-## 3. SKU list — `getSkuInformationByProductEdition`
+## 4. SKU list — `getSkuInformationByProductEdition`
 
 ```
-GET /software-download-connector/api/getskuinformationbyproductedition
-    ?profile=606624d44113
-    &ProductEditionId=3321        ← edition (3321=Win11 x64, 3324=ARM64, 2618=Win10)
+GET <api_base>/getskuinformationbyproductedition
+    ?profile=<profile>
+    &ProductEditionId=3321        ← edition (3321=Win11 x64, 3324=ARM64, 2618=Win10,
+                                              3322=Win11 Home China, 3323=Win11 Pro China)
     &Locale=en-US
     &sessionID=<uuid>
 ```
@@ -63,13 +81,13 @@ The `Referer` header must match the download page URL, and the `fptctx2`/`MUID` 
 
 ---
 
-## 4. Download link — `GetProductDownloadLinksBySku`
+## 5. Download link — `GetProductDownloadLinksBySku`
 
 Before this call, `wisodown` re-fetches the download page to refresh the short-lived **`CAS_PROGRAM`** cookie (~8 second TTL) that Sentinel requires on this endpoint.
 
 ```
-GET /software-download-connector/api/GetProductDownloadLinksBySku
-    ?profile=606624d44113
+GET <api_base>/GetProductDownloadLinksBySku
+    ?profile=<profile>
     &SKU=<sku_id>
     &Locale=en-US
     &sessionID=<uuid>
@@ -79,7 +97,7 @@ Returns a list of **download options** with time-limited (~24h) CDN URLs. For Wi
 
 ---
 
-## 5. Page hash scraping
+## 6. Page hash scraping
 
 Microsoft publishes SHA-256 hashes for every ISO on the download page in a plain HTML table:
 
@@ -99,7 +117,7 @@ This step is skipped when `--no-verify` is passed.
 
 ---
 
-## 6. Parallel download
+## 7. Parallel download
 
 ### Temp file approach
 
@@ -111,19 +129,19 @@ The ISO is always written to a `.part` file in the same directory as the final d
 
 ### Range requests (multi-threaded)
 
-When `--threads N` is greater than 1 (default: 4):
+When `--threads N` is greater than 1 (default: 8):
 
 1. A `HEAD` request checks `Accept-Ranges: bytes` and `Content-Length`. If either is missing or ranges are not supported, a single-connection fallback is used.
 2. The file is **pre-allocated** on disk using `set_len(total)` to avoid fragmentation and ensure all offsets are writable.
 3. The file range is split into N equal segments. Each segment is fetched with an HTTP `Range: bytes=start-end` header in its own tokio task.
-4. All tasks share a single `Arc<Mutex<tokio::fs::File>>`. Each task locks the mutex, seeks to its current write position, writes the chunk, and releases the lock. Since network I/O is orders of magnitude slower than local writes, mutex contention is minimal.
+4. Each task opens its own OS file handle (via `std::fs::File::open` + `seek`) pre-positioned at the correct offset, then wraps it in a `tokio::io::BufWriter`. Since each handle writes to a non-overlapping byte range, no locking is needed.
 5. A shared `ProgressBar` is incremented by each task as chunks arrive.
-6. Cancellation uses an `Arc<AtomicBool>` set by a background ctrl_c listener; each task checks it per chunk.
+6. Cancellation uses `tokio::select!` — the main task races the `join_all(tasks)` future against `tokio::signal::ctrl_c()`. On Ctrl+C, the `.part` file is removed and the process exits with code 130.
 
 ### SHA-256 computation
 
 - **Single-threaded mode**: SHA-256 is computed on-the-fly in the streaming loop — free, no extra I/O.
-- **Multi-threaded mode**: Because chunks arrive at arbitrary offsets, in-stream hashing would require reordering. Instead, after all tasks complete, the finished `.part` file is read sequentially in 4 MB chunks to compute the digest.
+- **Multi-threaded mode**: Because chunks arrive at arbitrary offsets, in-stream hashing would require reordering. Instead, after all tasks complete, the finished `.part` file is read sequentially in 8 MB chunks to compute the digest.
 - **`--no-verify`**: The re-read pass in multi-threaded mode is skipped entirely.
 
 ---
