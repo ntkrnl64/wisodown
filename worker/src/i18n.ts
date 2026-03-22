@@ -63,9 +63,9 @@ const translations = {
     footerNote:
       "ISO \u6587\u4EF6\u76F4\u63A5\u4ECE\u5FAE\u8F6F\u670D\u52A1\u5668\u4E0B\u8F7D\u3002",
   },
-} as const;
+} as const satisfies Record<Locale, Record<string, string>>;
 
-export type Translations = (typeof translations)["en"];
+export type Translations = { readonly [K in keyof (typeof translations)["en"]]: string };
 
 export function detectLocale(): Locale {
   const lang = navigator.language.toLowerCase();
