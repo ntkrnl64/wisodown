@@ -492,27 +492,6 @@ impl MsDownloadClient {
         Ok(())
     }
 
-    // ── Cookie refresh ─────────────────────────────────────────────────────
-
-    async fn refresh_page_cookie(&self) -> Result<()> {
-        if self.debug {
-            eprintln!("[debug] Refreshing page cookie: {}", self.page_url);
-        }
-        let resp = self
-            .http
-            .get(&self.page_url)
-            .header(header::ACCEPT, "text/html,*/*;q=0.8")
-            .header(header::ACCEPT_LANGUAGE, "en-US,en;q=0.5")
-            .send()
-            .await
-            .context("Failed to refresh Microsoft download page cookie")?;
-        if self.debug {
-            eprintln!("[debug] Cookie refresh status: {}", resp.status());
-        }
-        resp.bytes().await.ok();
-        Ok(())
-    }
-
     // ── Page hash scraping ─────────────────────────────────────────────────
 
     async fn fetch_page_hashes(&self) -> HashMap<String, String> {
