@@ -1880,12 +1880,15 @@ dependencies = [
  "futures-util",
  "hex",
  "indicatif",
+ "js-sys",
  "reqwest",
  "serde",
  "serde_json",
  "sha2",
  "tokio",
  "uuid",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
