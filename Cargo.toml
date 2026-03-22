@@ -8,6 +8,7 @@ license = "GPL-3.0-only"
 [lib]
 name = "windows_iso_downloader"
 path = "src/lib.rs"
+crate-type = ["lib", "cdylib"]
 
 [[bin]]
 name = "wisodown"
@@ -41,3 +42,4 @@ uuid = { version = "1", features = ["v4", "js"] }
 js-sys = "0.3"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
+serde-wasm-bindgen = "0.6"

@@ -4,6 +4,8 @@ mod download;
 mod edition;
 mod parse;
 mod types;
+#[cfg(target_arch = "wasm32")]
+mod wasm;
 
 pub use client::MsDownloadClient;
 #[cfg(not(target_arch = "wasm32"))]

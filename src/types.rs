@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 // ── Internal API response types ────────────────────────────────────────────
 
@@ -26,7 +26,7 @@ pub(crate) struct SkuResponse {
 
 // ── Public types ───────────────────────────────────────────────────────────
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(rename_all = "PascalCase")]
 pub struct Sku {
     pub id: String,
@@ -35,7 +35,7 @@ pub struct Sku {
     pub friendly_file_names: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct DownloadResponse {
     #[serde(default)]
@@ -43,7 +43,7 @@ pub struct DownloadResponse {
     pub download_expiration_datetime: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct DownloadOption {
     pub name: String,
