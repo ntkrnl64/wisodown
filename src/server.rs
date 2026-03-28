@@ -1,6 +1,6 @@
 use axum::{
     extract::Query,
-    http::{header, StatusCode, Uri},
+    http::{header, HeaderValue, Method, StatusCode, Uri},
     response::{IntoResponse, Json, Response},
     routing::get,
     Router,
@@ -11,6 +11,7 @@ use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use tower_http::cors::CorsLayer;
 use windows_iso_downloader::*;
 
 // ── CLI ──────────────────────────────────────────────────────────────────────
@@ -26,6 +27,10 @@ struct Cli {
     /// Host / bind address.
     #[arg(short = 'H', long, default_value = "0.0.0.0")]
     host: String,
+
+    /// Allowed CORS origins (repeatable). Use "*" to allow all origins.
+    #[arg(long = "cors-origin")]
+    cors_origins: Vec<String>,
 }
 
 // ── Embedded frontend assets (built from frontend/dist/client/) ──────────────
@@ -284,11 +289,28 @@ async fn main() {
         .route("/links", get(api_links))
         .route("/hashes", get(api_hashes));
 
+    let cors = if cli.cors_origins.iter().any(|o| o == "*") {
+        CorsLayer::permissive()
+    } else if !cli.cors_origins.is_empty() {
+        let origins: Vec<HeaderValue> = cli
+            .cors_origins
+            .iter()
+            .map(|o| o.parse::<HeaderValue>().expect("Invalid CORS origin"))
+            .collect();
+        CorsLayer::new()
+            .allow_origin(origins)
+            .allow_methods([Method::GET])
+            .allow_headers([header::CONTENT_TYPE])
+    } else {
+        CorsLayer::new()
+    };
+
     let app = Router::new()
         .nest("/api", api)
         .route("/docs", get(docs_redirect))
         .route("/docs/", get(docs_redirect))
-        .fallback(get(serve_static));
+        .fallback(get(serve_static))
+        .layer(cors);
 
     let addr: SocketAddr = format!("{}:{}", cli.host, cli.port)
         .parse()
