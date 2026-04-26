@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wisodown",
+  "main": "worker.ts",
+  "compatibility_date": "2026-04-26",
+  "workers_dev": false,
+  "routes": [
+    { "pattern": "wiso.krnl64.win/*", "zone_name": "krnl64.win" }
+  ],
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  }
+}
