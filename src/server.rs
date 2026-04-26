@@ -1,16 +1,20 @@
 use axum::{
-    extract::Query,
+    extract::{Query, State},
     http::{header, HeaderValue, Method, StatusCode, Uri},
     response::{IntoResponse, Json, Response},
     routing::get,
     Router,
 };
 use clap::Parser;
+use rusqlite::{params, Connection, OptionalExtension};
 use rust_embed::Embed;
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::sync::{Arc, Mutex};
+use std::time::{SystemTime, UNIX_EPOCH};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use tower_http::cors::CorsLayer;
 use windows_iso_downloader::*;
 
@@ -31,6 +35,99 @@ struct Cli {
     /// Allowed CORS origins (repeatable). Use "*" to allow all origins.
     #[arg(long = "cors-origin")]
     cors_origins: Vec<String>,
+
+    /// SQLite cache file for /api/links responses.
+    #[arg(long, default_value = "wisodown-cache.db")]
+    cache_db: String,
+
+    /// Fallback cache TTL in seconds, used when Microsoft does not return a
+    /// download expiration timestamp. Set to 0 to disable caching of those
+    /// responses.
+    #[arg(long, default_value_t = 3600)]
+    cache_ttl: i64,
+}
+
+// ── Cache ────────────────────────────────────────────────────────────────────
+
+#[derive(Clone)]
+struct AppState {
+    db: Arc<Mutex<Connection>>,
+    default_ttl_secs: i64,
+}
+
+fn init_db(path: &str) -> rusqlite::Result<Connection> {
+    let conn = Connection::open(path)?;
+    conn.execute_batch(
+        "CREATE TABLE IF NOT EXISTS link_cache (
+             edition_id   TEXT    NOT NULL,
+             language_key TEXT    NOT NULL,
+             expires_at   INTEGER NOT NULL,
+             cached_at    INTEGER NOT NULL,
+             payload      TEXT    NOT NULL,
+             PRIMARY KEY (edition_id, language_key)
+         );
+         CREATE INDEX IF NOT EXISTS idx_link_cache_expires
+             ON link_cache(expires_at);",
+    )?;
+    Ok(conn)
+}
+
+fn now_secs() -> i64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+fn parse_expires(s: &str) -> Option<i64> {
+    OffsetDateTime::parse(s, &Rfc3339)
+        .ok()
+        .map(|d| d.unix_timestamp())
+}
+
+async fn cache_get(state: &AppState, edition_id: &str, lang_key: &str) -> Option<String> {
+    let db = state.db.clone();
+    let edition = edition_id.to_string();
+    let lang = lang_key.to_string();
+    let now = now_secs();
+    tokio::task::spawn_blocking(move || -> rusqlite::Result<Option<String>> {
+        let conn = db.lock().unwrap();
+        let mut stmt = conn.prepare_cached(
+            "SELECT payload FROM link_cache
+                 WHERE edition_id = ?1
+                   AND language_key = ?2
+                   AND expires_at > ?3",
+        )?;
+        stmt.query_row(params![edition, lang, now], |r| r.get::<_, String>(0))
+            .optional()
+    })
+    .await
+    .ok()
+    .and_then(|r| r.ok().flatten())
+}
+
+async fn cache_put(
+    state: &AppState,
+    edition_id: &str,
+    lang_key: &str,
+    expires_at: i64,
+    payload: String,
+) {
+    let db = state.db.clone();
+    let edition = edition_id.to_string();
+    let lang = lang_key.to_string();
+    let now = now_secs();
+    let _ = tokio::task::spawn_blocking(move || -> rusqlite::Result<()> {
+        let conn = db.lock().unwrap();
+        conn.execute(
+            "INSERT OR REPLACE INTO link_cache
+                 (edition_id, language_key, expires_at, cached_at, payload)
+                 VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![edition, lang, expires_at, now, payload],
+        )?;
+        Ok(())
+    })
+    .await;
 }
 
 // ── Embedded frontend assets (built from frontend/dist/client/) ──────────────
@@ -172,7 +269,7 @@ struct DownloadLink {
     url: String,
 }
 
-async fn api_links(Query(params): Query<LinksParams>) -> Response {
+async fn api_links(State(state): State<AppState>, Query(params): Query<LinksParams>) -> Response {
     let Some(edition) = params.edition.as_deref() else {
         return err_json("Missing ?edition= parameter", StatusCode::BAD_REQUEST);
     };
@@ -184,6 +281,23 @@ async fn api_links(Query(params): Query<LinksParams>) -> Response {
         Ok(v) => v,
         Err(msg) => return err_json(&msg, StatusCode::BAD_REQUEST),
     };
+
+    let lang_key = language.to_ascii_lowercase();
+
+    if let Some(cached) = cache_get(&state, &edition_id, &lang_key).await {
+        return (
+            StatusCode::OK,
+            [
+                (header::CONTENT_TYPE, "application/json".to_string()),
+                (
+                    header::HeaderName::from_static("x-cache"),
+                    "HIT".to_string(),
+                ),
+            ],
+            cached,
+        )
+            .into_response();
+    }
 
     let client = match MsDownloadClient::init(page_url, params.cookie, false).await {
         Ok(c) => c,
@@ -247,7 +361,30 @@ async fn api_links(Query(params): Query<LinksParams>) -> Response {
         hashes,
     };
 
-    Json(serde_json::to_value(&result).unwrap()).into_response()
+    let payload = serde_json::to_string(&result).unwrap();
+
+    let expires_at = result
+        .expires_at
+        .as_deref()
+        .and_then(parse_expires)
+        .unwrap_or_else(|| now_secs() + state.default_ttl_secs);
+
+    if expires_at > now_secs() {
+        cache_put(&state, &edition_id, &lang_key, expires_at, payload.clone()).await;
+    }
+
+    (
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/json".to_string()),
+            (
+                header::HeaderName::from_static("x-cache"),
+                "MISS".to_string(),
+            ),
+        ],
+        payload,
+    )
+        .into_response()
 }
 
 async fn api_hashes(Query(params): Query<EditionParams>) -> Response {
@@ -282,12 +419,19 @@ async fn docs_redirect() -> Response {
 async fn main() {
     let cli = Cli::parse();
 
+    let conn = init_db(&cli.cache_db).expect("failed to open cache database");
+    let state = AppState {
+        db: Arc::new(Mutex::new(conn)),
+        default_ttl_secs: cli.cache_ttl,
+    };
+
     let api = Router::new()
         .route("/", get(api_index))
         .route("/resolve", get(api_resolve))
         .route("/skus", get(api_skus))
         .route("/links", get(api_links))
-        .route("/hashes", get(api_hashes));
+        .route("/hashes", get(api_hashes))
+        .with_state(state);
 
     let cors = if cli.cors_origins.iter().any(|o| o == "*") {
         CorsLayer::permissive()
