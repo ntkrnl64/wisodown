@@ -10,7 +10,7 @@ use rusqlite::{params, Connection, OptionalExtension};
 use rust_embed::Embed;
 use serde::Serialize;
 use serde_json::{json, Value};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -168,6 +168,14 @@ async fn serve_static(uri: Uri) -> Response {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 fn resolve(edition: &str) -> Result<(String, String), String> {
+    // Legacy Windows 7/8/8.1 editions are served from archive.org.
+    if let Some(legacy) = resolve_legacy(edition) {
+        let item = legacy.items.first().copied().unwrap_or("");
+        return Ok((
+            format!("legacy:{edition}"),
+            format!("https://archive.org/details/{item}"),
+        ));
+    }
     match resolve_edition(edition) {
         Ok((eid, purl)) => Ok((eid.to_string(), purl.to_string())),
         Err(_) => {
@@ -177,12 +185,45 @@ fn resolve(edition: &str) -> Result<(String, String), String> {
             } else {
                 Err(format!(
                     "Unknown edition '{}'. Use 'x64', 'arm64', 'win10', \
-                     'win11-cn-home', 'win11-cn-pro', or a numeric edition ID.",
+                     'win11-cn-home', 'win11-cn-pro', 'win7', 'win8', 'win8.1', \
+                     or a numeric edition ID.",
                     edition
                 ))
             }
         }
     }
+}
+
+/// HTTP client for archive.org metadata/downloads.
+fn archive_http() -> reqwest::Client {
+    reqwest::Client::builder()
+        .user_agent(concat!("wisodown-server/", env!("CARGO_PKG_VERSION")))
+        .build()
+        .unwrap_or_default()
+}
+
+/// Group archive.org ISOs into SKUs by language so the legacy editions expose
+/// the same shape as Microsoft's `get_skus` response.
+fn legacy_skus(isos: &[LegacyIso]) -> Vec<Sku> {
+    let mut groups: BTreeMap<String, Vec<&LegacyIso>> = BTreeMap::new();
+    for iso in isos {
+        let lang = iso.language().unwrap_or_else(|| "Unknown".to_string());
+        groups.entry(lang).or_default().push(iso);
+    }
+    groups
+        .into_iter()
+        .map(|(lang, files)| {
+            let mut names: Vec<String> = files.iter().map(|f| f.name.clone()).collect();
+            names.sort();
+            let id = lang.to_ascii_lowercase().replace(' ', "-");
+            Sku {
+                id,
+                language: lang.clone(),
+                localized_language: lang,
+                friendly_file_names: names,
+            }
+        })
+        .collect()
 }
 
 fn err_json(msg: &str, status: StatusCode) -> Response {
@@ -215,7 +256,11 @@ async fn api_index() -> Json<Value> {
             "GET /api/links?edition=x64&language=English": "Get download links",
             "GET /api/hashes?edition=x64": "Get SHA-256 hashes from Microsoft",
         },
-        "editions": ["x64", "arm64", "win10", "win11-cn-home", "win11-cn-pro"],
+        "editions": [
+            "x64", "arm64", "win10", "win11-cn-home", "win11-cn-pro",
+            "win7", "win8", "win8.1"
+        ],
+        "note": "win7/win8/win8.1 are downloaded from archive.org (Microsoft no longer publishes them).",
     }))
 }
 
@@ -235,6 +280,15 @@ async fn api_skus(Query(params): Query<EditionParams>) -> Response {
     let Some(edition) = params.edition.as_deref() else {
         return err_json("Missing ?edition= parameter", StatusCode::BAD_REQUEST);
     };
+
+    // Legacy Windows 7/8/8.1 → archive.org.
+    if let Some(legacy) = resolve_legacy(edition) {
+        return match collect_isos(&archive_http(), legacy).await {
+            Ok(isos) => Json(serde_json::to_value(legacy_skus(&isos)).unwrap()).into_response(),
+            Err(e) => err_json(&e.to_string(), StatusCode::INTERNAL_SERVER_ERROR),
+        };
+    }
+
     let (edition_id, page_url) = match resolve(edition) {
         Ok(v) => v,
         Err(msg) => return err_json(&msg, StatusCode::BAD_REQUEST),
@@ -276,6 +330,52 @@ async fn api_links(State(state): State<AppState>, Query(params): Query<LinksPara
     let Some(language) = params.language.as_deref() else {
         return err_json("Missing ?language= parameter", StatusCode::BAD_REQUEST);
     };
+
+    // Legacy Windows 7/8/8.1 → archive.org (no expiry, no Microsoft session).
+    if let Some(legacy) = resolve_legacy(edition) {
+        let isos = match collect_isos(&archive_http(), legacy).await {
+            Ok(v) => v,
+            Err(e) => return err_json(&e.to_string(), StatusCode::INTERNAL_SERVER_ERROR),
+        };
+        let matching = filter_by_language(&isos, language);
+        if matching.is_empty() {
+            let available: Vec<String> =
+                legacy_skus(&isos).into_iter().map(|s| s.language).collect();
+            return err_json(
+                &format!(
+                    "Language '{}' not found. Available: {}",
+                    language,
+                    available.join(", ")
+                ),
+                StatusCode::BAD_REQUEST,
+            );
+        }
+        let lang_name = matching[0]
+            .language()
+            .unwrap_or_else(|| language.to_string());
+        let mut hashes = HashMap::new();
+        for iso in &matching {
+            if let Some(md5) = &iso.md5 {
+                hashes.insert(iso.name.clone(), md5.clone());
+            }
+        }
+        let result = LinksResult {
+            edition: edition.to_string(),
+            language: lang_name.clone(),
+            localized_language: lang_name,
+            filename: matching.first().map(|i| i.name.clone()),
+            expires_at: None,
+            downloads: matching
+                .iter()
+                .map(|i| DownloadLink {
+                    name: i.name.clone(),
+                    url: i.url(),
+                })
+                .collect(),
+            hashes,
+        };
+        return Json(result).into_response();
+    }
 
     let (edition_id, page_url) = match resolve(edition) {
         Ok(v) => v,
@@ -391,6 +491,22 @@ async fn api_hashes(Query(params): Query<EditionParams>) -> Response {
     let Some(edition) = params.edition.as_deref() else {
         return err_json("Missing ?edition= parameter", StatusCode::BAD_REQUEST);
     };
+
+    // Legacy editions publish MD5 (SHA-1) on archive.org rather than SHA-256.
+    if let Some(legacy) = resolve_legacy(edition) {
+        let isos = match collect_isos(&archive_http(), legacy).await {
+            Ok(v) => v,
+            Err(e) => return err_json(&e.to_string(), StatusCode::INTERNAL_SERVER_ERROR),
+        };
+        let mut hashes = HashMap::new();
+        for iso in &isos {
+            if let Some(md5) = &iso.md5 {
+                hashes.insert(iso.name.clone(), md5.clone());
+            }
+        }
+        return Json(serde_json::to_value(&hashes).unwrap()).into_response();
+    }
+
     let (_, page_url) = match resolve(edition) {
         Ok(v) => v,
         Err(msg) => return err_json(&msg, StatusCode::BAD_REQUEST),
@@ -408,7 +524,10 @@ async fn api_hashes(Query(params): Query<EditionParams>) -> Response {
 async fn docs_redirect() -> Response {
     (
         StatusCode::FOUND,
-        [(header::LOCATION, "https://wisodocs.krnl64.win")],
+        [(
+            header::LOCATION,
+            "https://github.com/BENDER35/wisodown-lin/tree/main/docs",
+        )],
     )
         .into_response()
 }

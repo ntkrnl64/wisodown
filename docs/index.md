@@ -4,11 +4,11 @@ layout: home
 hero:
   name: Windows ISO Downloader
   text: Direct from Microsoft. No browser needed.
-  tagline: Download Windows 10 and Windows 11 ISOs straight from Microsoft's CDN, with automatic SHA-256 verification.
+  tagline: Download Windows 10 and Windows 11 ISOs straight from Microsoft's CDN, plus Windows 7/8/8.1 from archive.org, with automatic hash verification.
   actions:
     - theme: brand
-      text: Download Online
-      link: https://wiso.krnl64.win
+      text: Download
+      link: https://github.com/BENDER35/wisodown-lin/releases/latest
     - theme: alt
       text: Quick Start
       link: /guide/quick-start
@@ -18,11 +18,11 @@ hero:
 
 features:
   - title: Official Source
-    details: Downloads ISOs directly from Microsoft's CDN using the same API the download pages use. No third-party mirrors.
-  - title: SHA-256 Verification
-    details: Hashes are fetched automatically from Microsoft's page and verified against your download. No manual hash lookup needed.
-  - title: Windows 10 & 11
-    details: Supports Windows 11 x64, Windows 11 ARM64, and Windows 10 multi-edition (Home/Pro, 32-bit and 64-bit). Custom edition IDs also supported.
+    details: Downloads Windows 10/11 ISOs directly from Microsoft's CDN using the same API the download pages use. Windows 7/8/8.1 come from archive.org (Microsoft retired those ISOs).
+  - title: Hash Verification
+    details: SHA-256 hashes are fetched automatically from Microsoft's page and verified against your download; legacy archive.org downloads are checked against the published MD5.
+  - title: Windows 7, 8, 10 & 11
+    details: Supports Windows 11 x64, Windows 11 ARM64, Windows 10 multi-edition (Home/Pro, 32-bit and 64-bit), and Windows 7/8/8.1 from archive.org. Custom edition IDs also supported.
   - title: Interactive or Scripted
     details: Run without arguments for a guided wizard, or pass flags to fully automate downloads in scripts and CI.
 ---

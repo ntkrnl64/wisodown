@@ -2,6 +2,9 @@
 /temp
 /.claude
 /pkg
+*.db
+*.db-wal
+*.db-shm
 /docs/.vitepress/dist
 /docs/.vitepress/cache
 /docs/node_modules

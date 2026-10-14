@@ -32,6 +32,7 @@ pub struct Sku {
     pub id: String,
     pub language: String,
     pub localized_language: String,
+    #[serde(default)]
     pub friendly_file_names: Vec<String>,
 }
 

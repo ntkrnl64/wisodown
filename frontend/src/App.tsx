@@ -451,12 +451,12 @@ function App() {
             </Link>
           </Body1>
           <Text size={200}>
-            <Link href="https://wisodocs.krnl64.win" target="_blank" inline>
+            <Link href="https://github.com/BENDER35/wisodown-lin/tree/main/docs" target="_blank" inline>
               {t.docs}
             </Link>
             {" — "}
             <Link
-              href="https://github.com/ntkrnl64/wisodown"
+              href="https://github.com/BENDER35/wisodown-lin"
               target="_blank"
               inline
             >

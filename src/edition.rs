@@ -24,7 +24,8 @@ pub fn resolve_edition(input: &str) -> Result<(&'static str, &'static str)> {
         "win11-cn-pro" | "cn-pro" => Ok((EDITION_CN_PRO, PAGE_URL_X64)),
         _ => bail!(
             "Unknown edition '{}'. Use 'x64', 'arm64', 'win10', \
-             'win11-cn-home', 'win11-cn-pro', or --edition-id <N>.",
+             'win11-cn-home', 'win11-cn-pro', 'win7', 'win8', 'win8.1' \
+             (archive.org), or --edition-id <N>.",
             input
         ),
     }

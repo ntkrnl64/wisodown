@@ -29,6 +29,8 @@ export default defineConfig({
               { text: 'Quick Start', link: '/guide/quick-start' },
               { text: 'Usage', link: '/guide/usage' },
               { text: 'How It Works', link: '/guide/how-it-works' },
+              { text: 'Technical Reference', link: '/guide/technical' },
+              { text: 'Referencia técnica (ES)', link: '/guide/technical.es' },
             ],
           },
         ],
@@ -60,7 +62,7 @@ export default defineConfig({
 
   themeConfig: {
     socialLinks: [
-      { icon: 'github', link: 'https://github.com/ntkrnl64/wisodown' },
+      { icon: 'github', link: 'https://github.com/BENDER35/wisodown-lin' },
     ],
     footer: {
       message: 'Released under the GNU General Public License v3.0.',

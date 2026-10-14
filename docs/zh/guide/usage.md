@@ -12,14 +12,14 @@ wisodown [OPTIONS]
 
 | 参数 | 说明 |
 | ---- | ---- |
-| `-e, --edition <ALIAS>` | 版本别名：`x64`、`arm64`、`win10`、`win11-cn-home`、`win11-cn-pro` |
+| `-e, --edition <ALIAS>` | 版本别名：`x64`、`arm64`、`win10`、`win11-cn-home`、`win11-cn-pro`，以及 archive.org 版本 `win7`、`win8`、`win8.1` |
 | `--edition-id <N>` | 原始数字 `ProductEditionId`（高级用法） |
 | `--page-url <URL>` | 覆盖用于获取 Cookie 的页面地址（需配合 `--edition-id` 使用） |
-| `-l, --language <LANG>` | 语言名称，例如 `English`、`French`、`Japanese`。不区分大小写。 |
+| `-l, --language <LANG>` | 语言名称，例如 `English`、`French`、`Japanese`。不区分大小写。旧版版本优先精确匹配，否则按文件名子串匹配。 |
 | `-o, --output <DIR>` | 输出目录（默认：当前目录） |
 | `-t, --threads <N>` | 下载并行连接数（默认：`8`） |
 | `--url-only` | 仅输出下载链接，不执行下载 |
-| `--list-languages` | 列出所选版本可用的语言并退出 |
+| `--list-languages` | 列出所选版本可用的语言并退出（旧版版本则列出 ISO 文件） |
 | `--cookie <STR>` | 浏览器 Cookie 字符串，用于手动绕过反机器人检测 |
 | `--verify <SHA256>` | 指定期望的 SHA-256 十六进制摘要（覆盖页面哈希值）。与 `--no-verify` 互斥。 |
 | `--no-verify` | 完全跳过 SHA-256 获取、计算和校验。在多线程模式下也会跳过重新读取哈希的步骤。 |
@@ -27,15 +27,25 @@ wisodown [OPTIONS]
 
 ## 版本别名
 
-| `--edition` | Windows 版本 |
-| ----------- | ------------ |
-| `x64` | Windows 11，64 位 (x86-64) |
-| `arm64` | Windows 11，ARM 64 位 |
-| `win10` | Windows 10，多版本（家庭版/专业版，32 位 + 64 位） |
-| `win11-cn-home` | Windows 11 家庭中文版（仅限中国） |
-| `win11-cn-pro` | Windows 11 专业中文版 |
+| `--edition` | Windows 版本 | 架构 | ISO 文件名 |
+| ----------- | ------------ | ---- | ---------- |
+| `x64` | Windows 11 **25H2** | x64 (64 位) | `Win11_25H2_<Lang>_x64_v2.iso` |
+| `arm64` | Windows 11 **25H2** | Arm64 | `Win11_25H2_<Lang>_Arm64_v2.iso` |
+| `win10` | Windows 10 **22H2** | x86 + x64（提示时选择） | `Win10_22H2_<Lang>_x32v1.iso` / `…_x64v1.iso` |
+| `win11-cn-home` | Windows 11 **25H2** 家庭中文版 | x64 | 仅简体中文 |
+| `win11-cn-pro` | Windows 11 **25H2** 专业中文版 | x64 | 仅简体中文 |
+| `win7` | Windows 7 **Ultimate SP1** *（archive.org）* | x86 + x64 | `Win7_Ult_SP1_English_x32.iso` / `Win7_Ult_SP1_Spanish_x32.iso` / `…_x64.iso` / `…_x64.es.iso` |
+| `win8` | Windows 8 **RTM** *（archive.org）* | x86 + x64 | `en_windows_8_x86_dvd_915417.iso` / `…_x64_…iso` |
+| `win8.1` | Windows 8.1 **家庭版/专业版** *（archive.org）* | x86 + x64 | `Win8.1_<Lang>_x32.iso` / `Win8.1_<Lang>_x64.iso` |
 
-也接受以下别名：`win11`、`win11-x64`、`win11-arm64`、`amd64`、`aarch64`、`cn-home`、`cn-pro`。
+微软只提供每个产品的最新功能更新（Windows 11 **25H2**、Windows 10 **22H2**）。
+消费者 ISO 为**多版本**，Windows 10 和 Windows 11 x64/Arm64 均提供 38 种语言。
+
+`win7`、`win8`、`win8.1` 从 **archive.org** 下载（微软已下架这些消费者 ISO）。
+`win8.1` 支持多语言，`win7`/`win8` 支持 **中英文**（西班牙语/English ISO 通过 archive.org 可用）。下载会对照 archive.org 公布的
+**MD5** 进行校验；`--verify` 仍可传入 SHA-256。
+
+也接受以下别名：`win11`、`win11-x64`、`win11-arm64`、`amd64`、`aarch64`、`cn-home`、`cn-pro`。旧版版本还接受 `windows7`、`windows8`、`windows8.1`、`win81`、`windows81` 以及裸值 `7`、`8`、`8.1`。
 
 ## 哈希校验
 
@@ -83,6 +93,19 @@ wisodown --edition x64 --language English --threads 1
 - 中断的下载不会在目标路径留下不完整的文件。
 - Ctrl+C 会立即删除 `.part` 文件。
 
+## Ciclo de vida del soporte de Windows
+
+La política de soporte de Microsoft afecta a qué versiones de ISO puedes usar con seguridad con esta herramienta:
+
+- **Windows 7** el soporte principal terminó el **13 de enero de 2015**, el soporte extendido terminó el **14 de enero de 2020**. Ya no recibe actualizaciones de seguridad.
+- **Windows 8** el soporte terminó el **12 de enero de 2016**. Ya no recibe actualizaciones de seguridad.
+- **Windows 8.1** el soporte terminó el **10 de enero de 2018**. Ya no recibe actualizaciones de seguridad.
+- **Windows 10** el soporte principal terminó el **13 de octubre de 2020**. El soporte extendido termina el **14 de octubre de 2025**.
+- **Windows 10 ESU** (Actualizaciones de seguridad extendidas) está disponible para Windows 10 Enterprise hasta **enero de 2028** (a través de Licencias por Volumen). ESU recibe actualizaciones de seguridad críticas incluso después de que termina el soporte extendido.
+- **Rotación de certificados raíz**: A partir de 2023, Microsoft comenzó a rotar los certificados raíz de confianza. Los sistemas que ejecutan Windows 7/8/8.1 **sin ESU** pueden perder la capacidad de conectarse a Windows Update y algunos servicios de Microsoft a medida que expiran las raíces antiguas y no se instalan las nuevas. Windows 10 con ESU recibe las actualizaciones de certificados. Esto puede afectar la capacidad de la herramienta para adquirir cookies de la API de Microsoft en sistemas sin actualizar.
+
+> **Recomendación**: Si aún se requiere para flujos de trabajo heredados, use Windows 10 con ESU, o migre a un SO actualmente compatible. La herramienta misma se ejecuta en cualquier SO con Rust, pero los ISOs de Windows que descarga tienen el ciclo de vida anterior.
+
 ## 使用原始版本 ID
 
 微软网站上的每个 ISO 产品都有一个数字 `ProductEditionId`。你可以直接传入该 ID 来下载没有命名别名的版本：
@@ -99,6 +122,39 @@ wisodown --edition-id 2618 \
   --language English
 ```
 
+## 旧版版本（Windows 7 / 8 / 8.1）
+
+这些版本从 **archive.org** 获取，而非微软：
+
+```sh
+# Windows 7 Ultimate SP1，64 位（中文/Chinese）
+wisodown --edition win7 --language Chinese(Simplified)
+
+# Windows 7 Ultimate SP1，64 位（英文/English）
+wisodown --edition win7 --language English
+
+# Windows 8 RTM，32 位（英文/English）
+wisodown --edition win8 --language English
+
+# Windows 8 RTM，64 位（英文/English）
+wisodown --edition win8 --language English
+
+# Windows 8.1（多语言，提供 32 位与 64 位）
+wisodown --edition win8.1 --language Spanish
+
+# 列出该版本的全部 ISO
+wisodown --edition win8.1 --list-languages
+
+# 仅输出 archive.org 链接
+wisodown --edition win7 --language English --url-only
+```
+
+ISO 列表（名称、大小、MD5）在运行时从 archive.org 元数据 API 读取，因此始终
+保持最新。由于许多语言同时提供 32 位和 64 位文件，语言查询可能匹配多个 ISO，
+此时会出现选择菜单；下载完成后会对照 archive.org 的 MD5 进行校验。`win7` y
+`win8` admiten inglés y español; `win8.1` usa coincidencia por subcadena en el
+nombre de archivo.
+
 ## 列出可用语言
 
 ```sh
@@ -110,9 +166,9 @@ wisodown --edition x64 --list-languages
 
 ```
 Available languages:
-  Arabic                         (id: 1234, file: Win11_24H2_Arabic_x64.iso)
-  English                        (id: 5585, file: Win11_24H2_English_x64.iso)
-  French                         (id: 5586, file: Win11_24H2_French_x64.iso)
+  Arabic                         (id: 20035, file: Win11_25H2_Arabic_x64_v2.iso)
+  English                        (id: 20046, file: Win11_25H2_English_x64_v2.iso)
+  French                         (id: 20047, file: Win11_25H2_French_x64_v2.iso)
   ...
 ```
 
